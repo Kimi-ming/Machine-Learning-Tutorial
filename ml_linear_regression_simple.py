@@ -13,6 +13,9 @@ def _ensure_sequence(values: Iterable[Number], *, allow_empty: bool = False) -> 
     values_list = [float(v) for v in values]
     if not allow_empty and not values_list:
         raise ValueError("输入数据不能为空")
+    # 检查NaN和Inf
+    if not all(math.isfinite(v) for v in values_list):
+        raise ValueError("输入数据包含NaN或Inf，请检查数据质量")
     return values_list
 
 
