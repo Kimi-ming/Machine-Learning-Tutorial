@@ -2,7 +2,7 @@
 # Logistic Regression: 代码实现 + 原理解释
 
 import math
-from typing import Iterable, Sequence, Tuple, Union
+from typing import List, Sequence, Tuple, Union
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -106,7 +106,7 @@ class LogisticRegression:
 
         self.weight: float = 0.0
         self.bias: float = 0.0
-        self.cost_history: list[float] = []
+        self.cost_history: List[float] = []
 
     @staticmethod
     def sigmoid(z: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
