@@ -71,9 +71,9 @@ class SimpleLinearRegression:
     learning_rate: float = 0.01
     max_iterations: int = 1000
     tolerance: float = 0.0
-    weight: float = 0.0
-    bias: float = 0.0
-    cost_history: List[float] = field(default_factory=list)
+    weight: float = field(default=0.0, init=False)
+    bias: float = field(default=0.0, init=False)
+    cost_history: List[float] = field(default_factory=list, init=False)
 
     def __post_init__(self) -> None:
         if self.learning_rate <= 0:
@@ -96,12 +96,16 @@ class SimpleLinearRegression:
         previous_cost = math.inf
 
         for iteration in range(self.max_iterations):
+            # 向量化计算预测值和误差
             predictions = [self.weight * x + self.bias for x in X_list]
-            cost = mean_squared_error(y_list, predictions)
+            errors = [pred - actual for pred, actual in zip(predictions, y_list)]
+
+            cost = sum(e * e for e in errors) / n_samples
             self.cost_history.append(cost)
 
-            gradient_w = (2 / n_samples) * sum((pred - actual) * x for pred, actual, x in zip(predictions, y_list, X_list))
-            gradient_b = (2 / n_samples) * sum(pred - actual for pred, actual in zip(predictions, y_list))
+            # 向量化梯度计算
+            gradient_w = (2 / n_samples) * sum(error * x for error, x in zip(errors, X_list))
+            gradient_b = (2 / n_samples) * sum(errors)
 
             self.weight -= self.learning_rate * gradient_w
             self.bias -= self.learning_rate * gradient_b
