@@ -30,7 +30,8 @@ def log_loss(y_true: np.ndarray, y_prob: np.ndarray, eps: float = 1e-15) -> floa
     return float(-np.mean(y_true * np.log(y_prob) + (1 - y_true) * np.log(1 - y_prob)))
 
 
-def classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[float, float, float]:
+def classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[float, float, float, float]:
+    """计算分类指标：准确率、精确率、召回率、F1分数。"""
     if y_true.shape != y_pred.shape:
         raise ValueError("真实标签和预测标签的形状必须一致")
 
@@ -42,8 +43,22 @@ def classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[floa
     accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) else 0.0
     precision = tp / (tp + fp) if (tp + fp) else 0.0
     recall = tp / (tp + fn) if (tp + fn) else 0.0
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) else 0.0
 
-    return accuracy, precision, recall
+    return accuracy, precision, recall, f1
+
+
+def confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[int, int, int, int]:
+    """计算混淆矩阵：返回(TP, TN, FP, FN)。"""
+    if y_true.shape != y_pred.shape:
+        raise ValueError("真实标签和预测标签的形状必须一致")
+
+    tp = int(np.sum((y_pred == 1) & (y_true == 1)))
+    tn = int(np.sum((y_pred == 0) & (y_true == 0)))
+    fp = int(np.sum((y_pred == 1) & (y_true == 0)))
+    fn = int(np.sum((y_pred == 0) & (y_true == 1)))
+
+    return tp, tn, fp, fn
 
 def logistic_regression_theory():
     """
@@ -257,12 +272,19 @@ def practical_example():
     
     # 模型评估
     train_predictions = model.predict(X_train)
-    accuracy, precision, recall = classification_metrics(y_train, train_predictions)
-    
+    accuracy, precision, recall, f1 = classification_metrics(y_train, train_predictions)
+    tp, tn, fp, fn = confusion_matrix(y_train, train_predictions)
+
     print(f"\n模型性能：")
     print(f"训练集准确率: {accuracy:.3f}")
     print(f"精确率(Precision): {precision:.3f}")
     print(f"召回率(Recall): {recall:.3f}")
+    print(f"F1分数: {f1:.3f}")
+
+    print(f"\n混淆矩阵：")
+    print(f"              预测: 不通过  预测: 通过")
+    print(f"实际: 不通过      {tn:4d}       {fp:4d}")
+    print(f"实际: 通过        {fn:4d}       {tp:4d}")
     
     # 可视化
     visualize_logistic_regression(X_train, y_train, model)
