@@ -179,18 +179,18 @@ def sigmoid_function_demo():
     z_values = np.linspace(-10, 10, 100)
     sigmoid_values = 1 / (1 + np.exp(-z_values))
     
-    print("Sigmoid函数 σ(z) = 1 / (1 + e^(-z)) 的特点：")
-    print("• 输出范围：(0, 1)")
-    print("• 在z=0时，σ(0) = 0.5")
-    print("• 单调递增")
-    print("• S型曲线")
+    print("Sigmoid函数 sigma(z) = 1 / (1 + e^(-z)) 的特点：")
+    print("- 输出范围：(0, 1)")
+    print("- 在z=0时，sigma(0) = 0.5")
+    print("- 单调递增")
+    print("- S型曲线")
     
     # 关键点值
     key_points = [-2, -1, 0, 1, 2]
     print(f"\n关键点的Sigmoid值：")
     for z in key_points:
         sigmoid_val = 1 / (1 + math.exp(-z))
-        print(f"σ({z:2d}) = {sigmoid_val:.4f}")
+        print(f"sigma({z:2d}) = {sigmoid_val:.4f}")
     
     plt.figure(figsize=(10, 4))
 
@@ -374,20 +374,20 @@ def mathematical_insights():
     
     
     print("1. 为什么使用Sigmoid函数？")
-    print("   • 将任意实数映射到(0,1)区间，可解释为概率")
-    print("   • 可微分，便于梯度计算")
-    print("   • 在两端饱和，中间敏感的特性符合分类需求")
-    
+    print("   - 将任意实数映射到(0,1)区间，可解释为概率")
+    print("   - 可微分，便于梯度计算")
+    print("   - 在两端饱和，中间敏感的特性符合分类需求")
+
     print("\n2. 对数似然损失函数推导：")
-    print("   • 假设：P(y=1|x) = σ(wx+b), P(y=0|x) = 1-σ(wx+b)")
-    print("   • 似然函数：L = ∏P(yi|xi)")
-    print("   • 对数似然：log L = Σ[yi*log(pi) + (1-yi)*log(1-pi)]")
-    print("   • 损失函数：J = -log L (最小化负对数似然)")
-    
+    print("   - 假设：P(y=1|x) = sigma(wx+b), P(y=0|x) = 1-sigma(wx+b)")
+    print("   - 似然函数：L = Product(P(yi|xi))")
+    print("   - 对数似然：log L = Sigma[yi*log(pi) + (1-yi)*log(1-pi)]")
+    print("   - 损失函数：J = -log L (最小化负对数似然)")
+
     print("\n3. 梯度计算：")
-    print("   • ∂J/∂w = (1/m)Σ(σ(wx+b) - y)x")
-    print("   • ∂J/∂b = (1/m)Σ(σ(wx+b) - y)")
-    print("   • 形式与线性回归类似，但σ(wx+b)替代了wx+b")
+    print("   - d_J/d_w = (1/m)Sigma(sigma(wx+b) - y)x")
+    print("   - d_J/d_b = (1/m)Sigma(sigma(wx+b) - y)")
+    print("   - 形式与线性回归类似，但sigma(wx+b)替代了wx+b")
 
 if __name__ == "__main__":
     # 运行完整的逻辑回归教程
@@ -399,8 +399,8 @@ if __name__ == "__main__":
     
     print("\n=== 总结 ===")
     print("逻辑回归扩展了线性模型到分类问题，核心概念包括：")
-    print("• Sigmoid函数：将线性输出转换为概率")
-    print("• 对数似然损失：适合概率预测的损失函数")
-    print("• 决策边界：分离不同类别的界限")
-    print("• 概率解释：输出可以理解为置信度")
+    print("- Sigmoid函数：将线性输出转换为概率")
+    print("- 对数似然损失：适合概率预测的损失函数")
+    print("- 决策边界：分离不同类别的界限")
+    print("- 概率解释：输出可以理解为置信度")
     print("\n下一步：学习决策树，了解非线性分类方法！")

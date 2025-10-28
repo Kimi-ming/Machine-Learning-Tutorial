@@ -112,7 +112,8 @@ class SimpleLinearRegression:
         _check_lengths(X_list, y_list)
 
         n_samples = len(X_list)
-        print(f"开始训练：{n_samples}个样本，学习率={self.learning_rate}")
+        if self.verbose >= 1:
+            print(f"开始训练：{n_samples}个样本，学习率={self.learning_rate}")
 
         self.cost_history.clear()
         previous_cost = math.inf
@@ -132,15 +133,17 @@ class SimpleLinearRegression:
             self.weight -= self.learning_rate * gradient_w
             self.bias -= self.learning_rate * gradient_b
 
-            if iteration % 100 == 0:
+            if self.verbose >= 2 and iteration % 100 == 0:
                 print(f"迭代 {iteration}: 损失={cost:.4f}, w={self.weight:.4f}, b={self.bias:.4f}")
 
             if self.tolerance > 0 and abs(previous_cost - cost) < self.tolerance:
-                print(f"满足提前停止条件（迭代 {iteration}），损失变化 {abs(previous_cost - cost):.6f}")
+                if self.verbose >= 1:
+                    print(f"满足提前停止条件（迭代 {iteration}），损失变化 {abs(previous_cost - cost):.6f}")
                 break
             previous_cost = cost
 
-        print(f"训练完成！最终参数: w={self.weight:.4f}, b={self.bias:.4f}")
+        if self.verbose >= 1:
+            print(f"训练完成！最终参数: w={self.weight:.4f}, b={self.bias:.4f}")
 
     def predict(self, X: Union[Number, Sequence[Number]]) -> Union[float, List[float]]:
         """预测函数。"""
@@ -149,11 +152,6 @@ class SimpleLinearRegression:
 
         values = _ensure_sequence(X, allow_empty=True)
         return [self.weight * x + self.bias for x in values]
-    
-    def score(self, X: Sequence[Number], y: Sequence[Number]) -> float:
-        """计算模型的R²分数（sklearn兼容API）"""
-        predictions = self.predict(X)
-        return r2_score(y, predictions)
 
 def generate_sample_data():
     """
@@ -228,7 +226,7 @@ def demonstrate_different_learning_rates():
     
     for lr in learning_rates:
         print(f"\n--- 学习率 = {lr} ---")
-        model = SimpleLinearRegression(learning_rate=lr, max_iterations=200, tolerance=1e-6)
+        model = SimpleLinearRegression(learning_rate=lr, max_iterations=200, tolerance=1e-6, verbose=0)
         model.fit(X_train, y_train)
         
         # 显示最终损失
@@ -272,6 +270,29 @@ def mathematical_insights():
     print("   • 对大误差惩罚更重")
     print("   • 数学性质良好")
 
+def toy_example():
+    """玩具示例：5个点的线性回归，手算验证"""
+    print("\n=== 玩具示例：5个点的线性回归 ===")
+    X = [1, 2, 3, 4, 5]
+    y = [2.1, 3.9, 6.2, 8.0, 9.8]  # y ≈ 2x + 噪声
+    
+    print(f"数据: X={X}")
+    print(f"      y={y}")
+    
+    # 闭式解
+    w_ols, b_ols = fit_closed_form(X, y)
+    print(f"\n闭式解: w={w_ols:.4f}, b={b_ols:.4f}")
+    print(f"公式: y = {w_ols:.4f}*x + {b_ols:.4f}")
+    
+    # 梯度下降（使用较大学习率因为数据已标准化）
+    model = SimpleLinearRegression(learning_rate=0.01, max_iterations=500, tolerance=1e-6, verbose=2)
+    print("\n梯度下降训练：")
+    model.fit(X, y)
+    
+    print(f"\n参数对比: Δw={abs(model.weight - w_ols):.6f}, Δb={abs(model.bias - b_ols):.6f}")
+    print(f"两种方法得到的参数几乎一致！")
+
+
 def simple_gradient_descent_demo():
     """
     简单的梯度下降可视化演示
@@ -306,6 +327,7 @@ if __name__ == "__main__":
     # 运行完整的线性回归教程
     linear_regression_theory()
     simple_gradient_descent_demo()
+    toy_example()  # 新增：玩具示例
     practical_example()
     demonstrate_different_learning_rates()
     mathematical_insights()
