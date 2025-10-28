@@ -1,8 +1,30 @@
 # 机器学习算法教程 - 线性回归 (纯Python版)
 # Linear Regression: 代码实现 + 原理解释
 
-import random
 import math
+import random
+from dataclasses import dataclass, field
+from typing import Iterable, List, Sequence, Union
+
+Number = Union[int, float]
+
+
+def _ensure_sequence(values: Iterable[Number], *, allow_empty: bool = False) -> List[float]:
+    values_list = [float(v) for v in values]
+    if not allow_empty and not values_list:
+        raise ValueError("输入数据不能为空")
+    return values_list
+
+
+def _check_lengths(X: Sequence[Number], y: Sequence[Number]) -> None:
+    if len(X) != len(y):
+        raise ValueError("特征和目标数据的长度必须一致")
+
+
+def mean_squared_error(y_true: Sequence[Number], y_pred: Sequence[Number]) -> float:
+    _check_lengths(y_true, y_pred)
+    errors = [(pred - actual) for pred, actual in zip(y_pred, y_true)]
+    return sum(error * error for error in errors) / len(errors)
 
 def linear_regression_theory():
     """
@@ -32,57 +54,65 @@ def linear_regression_theory():
     print("应用：房价预测、股价预测、销售预测等")
     print()
 
+@dataclass
 class SimpleLinearRegression:
-    """
-    线性回归算法实现（纯Python版）
-    使用梯度下降法优化参数
-    """
-    
-    def __init__(self, learning_rate=0.01, max_iterations=1000):
-        self.learning_rate = learning_rate
-        self.max_iterations = max_iterations
-        self.weight = 0.0
-        self.bias = 0.0
-        self.cost_history = []
-        
-    def fit(self, X, y):
-        """
-        训练模型
-        X: 输入特征列表
-        y: 目标值列表
-        """
-        n_samples = len(X)
+    """线性回归算法实现（纯Python版）。"""
+
+    learning_rate: float = 0.01
+    max_iterations: int = 1000
+    tolerance: float = 0.0
+    weight: float = 0.0
+    bias: float = 0.0
+    cost_history: List[float] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if self.learning_rate <= 0:
+            raise ValueError("学习率必须为正数")
+        if self.max_iterations <= 0:
+            raise ValueError("最大迭代次数必须为正整数")
+        if self.tolerance < 0:
+            raise ValueError("容差不能为负数")
+
+    def fit(self, X: Iterable[Number], y: Iterable[Number]) -> None:
+        """训练模型。"""
+        X_list = _ensure_sequence(X)
+        y_list = _ensure_sequence(y)
+        _check_lengths(X_list, y_list)
+
+        n_samples = len(X_list)
         print(f"开始训练：{n_samples}个样本，学习率={self.learning_rate}")
-        
-        for i in range(self.max_iterations):
-            # 前向传播：计算预测值
-            predictions = [self.weight * x + self.bias for x in X]
-            
-            # 计算损失函数(均方误差)
-            cost = sum((pred - actual) ** 2 for pred, actual in zip(predictions, y)) / n_samples
+
+        self.cost_history.clear()
+        previous_cost = math.inf
+
+        for iteration in range(self.max_iterations):
+            predictions = [self.weight * x + self.bias for x in X_list]
+            cost = mean_squared_error(y_list, predictions)
             self.cost_history.append(cost)
-            
-            # 计算梯度
-            dw = sum((pred - actual) * x for pred, actual, x in zip(predictions, y, X)) * (2 / n_samples)
-            db = sum(pred - actual for pred, actual in zip(predictions, y)) * (2 / n_samples)
-            
-            # 更新参数
-            self.weight -= self.learning_rate * dw
-            self.bias -= self.learning_rate * db
-            
-            # 每100次迭代打印一次进度
-            if i % 100 == 0:
-                print(f"迭代 {i}: 损失={cost:.4f}, w={self.weight:.4f}, b={self.bias:.4f}")
-        
+
+            gradient_w = (2 / n_samples) * sum((pred - actual) * x for pred, actual, x in zip(predictions, y_list, X_list))
+            gradient_b = (2 / n_samples) * sum(pred - actual for pred, actual in zip(predictions, y_list))
+
+            self.weight -= self.learning_rate * gradient_w
+            self.bias -= self.learning_rate * gradient_b
+
+            if iteration % 100 == 0:
+                print(f"迭代 {iteration}: 损失={cost:.4f}, w={self.weight:.4f}, b={self.bias:.4f}")
+
+            if self.tolerance > 0 and abs(previous_cost - cost) < self.tolerance:
+                print(f"满足提前停止条件（迭代 {iteration}），损失变化 {abs(previous_cost - cost):.6f}")
+                break
+            previous_cost = cost
+
         print(f"训练完成！最终参数: w={self.weight:.4f}, b={self.bias:.4f}")
-        
-    def predict(self, X):
-        """
-        预测函数
-        """
+
+    def predict(self, X: Union[Number, Sequence[Number]]) -> Union[float, List[float]]:
+        """预测函数。"""
         if isinstance(X, (int, float)):
-            return self.weight * X + self.bias
-        return [self.weight * x + self.bias for x in X]
+            return self.weight * float(X) + self.bias
+
+        values = _ensure_sequence(X, allow_empty=True)
+        return [self.weight * x + self.bias for x in values]
 
 def generate_sample_data():
     """
@@ -91,23 +121,19 @@ def generate_sample_data():
     print("生成示例数据：房屋面积(平方米) -> 价格(万元)")
     
     random.seed(42)
-    
+
     # 生成100个房屋面积数据点 (50-200平方米)
     areas = [random.uniform(50, 200) for _ in range(100)]
-    
+
     # 真实关系：价格 = 0.5 * 面积 + 10 + 噪声
     true_slope = 0.5
     true_intercept = 10
-    
-    prices = []
-    for area in areas:
-        noise = random.gauss(0, 5)  # 添加高斯噪声
-        price = true_slope * area + true_intercept + noise
-        prices.append(price)
-    
+
+    prices = [true_slope * area + true_intercept + random.gauss(0, 5) for area in areas]
+
     print(f"真实关系：价格 = {true_slope} * 面积 + {true_intercept} + 噪声")
     print(f"数据范围：面积 {min(areas):.0f}-{max(areas):.0f}平方米，价格 {min(prices):.1f}-{max(prices):.1f}万元")
-    
+
     return areas, prices
 
 def practical_example():
@@ -120,7 +146,7 @@ def practical_example():
     X_train, y_train = generate_sample_data()
     
     # 训练模型
-    model = SimpleLinearRegression(learning_rate=0.0001, max_iterations=1000)
+    model = SimpleLinearRegression(learning_rate=0.01, max_iterations=2000, tolerance=1e-6)
     model.fit(X_train, y_train)
     
     # 预测新房价
@@ -134,7 +160,7 @@ def practical_example():
     
     # 模型评估
     train_predictions = model.predict(X_train)
-    mse = sum((pred - actual) ** 2 for pred, actual in zip(train_predictions, y_train)) / len(y_train)
+    mse = mean_squared_error(y_train, train_predictions)
     rmse = math.sqrt(mse)
     
     print(f"\n模型性能评估：")
@@ -159,7 +185,7 @@ def demonstrate_different_learning_rates():
     
     for lr in learning_rates:
         print(f"\n--- 学习率 = {lr} ---")
-        model = SimpleLinearRegression(learning_rate=lr, max_iterations=200)
+        model = SimpleLinearRegression(learning_rate=lr, max_iterations=200, tolerance=1e-6)
         model.fit(X_train, y_train)
         
         # 显示最终损失
