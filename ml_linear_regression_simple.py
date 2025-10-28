@@ -36,6 +36,28 @@ def r2_score(y_true: Sequence[Number], y_pred: Sequence[Number]) -> float:
     ss_residual = sum((y_t - y_p) ** 2 for y_t, y_p in zip(y_true, y_pred))
     return 1 - (ss_residual / ss_total) if ss_total != 0 else 0.0
 
+
+def fit_closed_form(X: Sequence[Number], y: Sequence[Number]) -> tuple[float, float]:
+    """使用闭式解(OLS)直接计算线性回归参数: w=Cov(X,y)/Var(X), b=mean(y)-w*mean(X)"""
+    X_list = _ensure_sequence(X)
+    y_list = _ensure_sequence(y)
+    _check_lengths(X_list, y_list)
+    
+    n = len(X_list)
+    x_mean = sum(X_list) / n
+    y_mean = sum(y_list) / n
+    
+    covariance = sum((x - x_mean) * (y_val - y_mean) for x, y_val in zip(X_list, y_list))
+    variance = sum((x - x_mean) ** 2 for x in X_list)
+    
+    if variance < 1e-10:
+        raise ValueError("特征方差接近0，无法拟合")
+    
+    weight = covariance / variance
+    bias = y_mean - weight * x_mean
+    return weight, bias
+
+
 def linear_regression_theory():
     """
     线性回归原理解释
