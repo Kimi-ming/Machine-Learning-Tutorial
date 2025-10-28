@@ -149,6 +149,11 @@ class SimpleLinearRegression:
 
         values = _ensure_sequence(X, allow_empty=True)
         return [self.weight * x + self.bias for x in values]
+    
+    def score(self, X: Sequence[Number], y: Sequence[Number]) -> float:
+        """计算模型的R²分数（sklearn兼容API）"""
+        predictions = self.predict(X)
+        return r2_score(y, predictions)
 
 def generate_sample_data():
     """
