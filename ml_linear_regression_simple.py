@@ -105,8 +105,8 @@ class SimpleLinearRegression:
         if self.tolerance < 0:
             raise ValueError("容差不能为负数")
 
-    def fit(self, X: Iterable[Number], y: Iterable[Number]) -> None:
-        """训练模型。"""
+    def fit(self, X: Iterable[Number], y: Iterable[Number]) -> "SimpleLinearRegression":
+        """训练模型，返回self支持链式调用。"""
         X_list = _ensure_sequence(X)
         y_list = _ensure_sequence(y)
         _check_lengths(X_list, y_list)
@@ -144,6 +144,8 @@ class SimpleLinearRegression:
 
         if self.verbose >= 1:
             print(f"训练完成！最终参数: w={self.weight:.4f}, b={self.bias:.4f}")
+        
+        return self
 
     def predict(self, X: Union[Number, Sequence[Number]]) -> Union[float, List[float]]:
         """预测函数。"""
