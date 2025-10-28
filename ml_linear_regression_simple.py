@@ -159,8 +159,8 @@ def practical_example():
     # 生成训练数据
     X_train, y_train = generate_sample_data()
     
-    # 训练模型
-    model = SimpleLinearRegression(learning_rate=0.01, max_iterations=2000, tolerance=1e-6)
+    # 训练模型 - 对于未归一化的数据，需要使用较小的学习率
+    model = SimpleLinearRegression(learning_rate=0.00001, max_iterations=2000, tolerance=1e-6)
     model.fit(X_train, y_train)
     
     # 预测新房价
@@ -197,7 +197,7 @@ def demonstrate_different_learning_rates():
     # 生成相同的训练数据
     X_train, y_train = generate_sample_data()
     
-    learning_rates = [0.1, 0.01, 0.001]
+    learning_rates = [0.00005, 0.00001, 0.000001]
     
     for lr in learning_rates:
         print(f"\n--- 学习率 = {lr} ---")
