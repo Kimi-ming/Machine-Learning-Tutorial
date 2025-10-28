@@ -1,8 +1,10 @@
 # 机器学习算法教程 - K-means聚类
 # K-means Clustering: 代码实现 + 原理解释
 
-import random
 import math
+import random
+from dataclasses import dataclass, field
+from typing import Iterable, List, Optional, Sequence, Tuple, Union
 
 def kmeans_theory():
     """
@@ -45,119 +47,157 @@ def kmeans_theory():
     print("应用：客户分析、图像分割、数据挖掘等")
     print()
 
-def euclidean_distance(point1, point2):
+def _ensure_data(data: Sequence[Sequence[float]]) -> List[List[float]]:
+    if not data:
+        raise ValueError("数据集不能为空")
+
+    processed = [list(map(float, sample)) for sample in data]
+    dimensions = len(processed[0])
+
+    for sample in processed:
+        if len(sample) != dimensions:
+            raise ValueError("所有样本必须具有相同的维度")
+
+    return processed
+
+
+def _ensure_point(point: Sequence[float], dimensions: int) -> List[float]:
+    if len(point) != dimensions:
+        raise ValueError("预测点的维度必须与训练数据一致")
+    return [float(value) for value in point]
+
+
+def euclidean_distance(point1: Sequence[float], point2: Sequence[float]) -> float:
     """计算欧几里得距离"""
     return math.sqrt(sum((a - b) ** 2 for a, b in zip(point1, point2)))
 
+@dataclass
 class SimpleKMeans:
-    """
-    简单K-means聚类实现
-    """
-    
-    def __init__(self, k=3, max_iterations=100, tolerance=1e-4):
-        self.k = k
-        self.max_iterations = max_iterations
-        self.tolerance = tolerance
-        self.centroids = []
-        self.labels = []
-        self.history = []  # 记录中心点变化历史
-        
-    def fit(self, data):
-        """训练K-means模型"""
-        print(f"开始K-means聚类：K={self.k}, 数据点数={len(data)}")
-        
-        # 1. 随机初始化聚类中心
-        self._initialize_centroids(data)
+    """简单K-means聚类实现，支持随机初始化或K-means++。"""
+
+    k: int = 3
+    max_iterations: int = 100
+    tolerance: float = 1e-4
+    init: str = "k-means++"
+    random_state: Optional[int] = None
+    centroids: List[List[float]] = field(default_factory=list)
+    labels: List[int] = field(default_factory=list)
+    history: List[List[List[float]]] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if self.k <= 0:
+            raise ValueError("K 值必须为正整数")
+        if self.max_iterations <= 0:
+            raise ValueError("最大迭代次数必须为正整数")
+        if self.tolerance < 0:
+            raise ValueError("容差必须为非负数")
+        if self.init not in {"random", "k-means++"}:
+            raise ValueError("init 参数必须是 'random' 或 'k-means++'")
+
+        if self.random_state is not None:
+            random.seed(self.random_state)
+
+    def fit(self, data: Sequence[Sequence[float]]):
+        """训练 K-means 模型。"""
+        processed_data = _ensure_data(data)
+        print(f"开始K-means聚类：K={self.k}, 数据点数={len(processed_data)}")
+
+        self._initialize_centroids(processed_data)
         print("初始化聚类中心完成")
-        
+
         for iteration in range(self.max_iterations):
             print(f"\n第 {iteration + 1} 次迭代:")
-            
-            # 2. 分配点到最近的聚类中心
-            old_labels = self.labels.copy() if self.labels else []
-            self.labels = self._assign_points(data)
-            
-            # 3. 更新聚类中心
+
+            old_labels = self.labels.copy()
+            self.labels = self._assign_points(processed_data)
+
             old_centroids = [centroid[:] for centroid in self.centroids]
-            self._update_centroids(data)
-            
-            # 记录历史
+            self._update_centroids(processed_data)
+
             self.history.append([centroid[:] for centroid in self.centroids])
-            
-            # 打印当前状态
             self._print_iteration_info(iteration + 1)
-            
-            # 4. 检查收敛
+
             if self._has_converged(old_centroids):
                 print(f"算法在第 {iteration + 1} 次迭代后收敛")
                 break
-                
-            # 检查标签是否变化
+
             if old_labels == self.labels:
                 print("点的分配不再变化，算法收敛")
                 break
-        
+
         print("K-means聚类完成！")
         return self
     
-    def _initialize_centroids(self, data):
-        """随机初始化聚类中心"""
-        # 找到数据的范围
-        if not data:
-            return
-            
-        dimensions = len(data[0])
-        min_vals = [min(point[d] for point in data) for d in range(dimensions)]
-        max_vals = [max(point[d] for point in data) for d in range(dimensions)]
-        
-        # 随机生成K个中心点
-        self.centroids = []
-        for _ in range(self.k):
-            centroid = []
-            for d in range(dimensions):
-                val = random.uniform(min_vals[d], max_vals[d])
-                centroid.append(val)
-            self.centroids.append(centroid)
+    def _initialize_centroids(self, data: List[List[float]]) -> None:
+        if self.init == "random":
+            self._random_initialize(data)
+        else:
+            self._kmeans_plus_plus_initialize(data)
     
-    def _assign_points(self, data):
-        """将每个点分配给最近的聚类中心"""
-        labels = []
-        
+    def _random_initialize(self, data: List[List[float]]) -> None:
+        self.centroids = []
+        chosen = random.sample(data, min(self.k, len(data)))
+        self.centroids.extend(point[:] for point in chosen)
+
+        while len(self.centroids) < self.k:
+            self.centroids.append(chosen[len(self.centroids) % len(chosen)][:])
+
+    def _kmeans_plus_plus_initialize(self, data: List[List[float]]) -> None:
+        self.centroids = []
+        first_centroid = random.choice(data)
+        self.centroids.append(first_centroid[:])
+
+        while len(self.centroids) < self.k:
+            distances = []
+            for point in data:
+                min_distance = min(euclidean_distance(point, centroid) ** 2 for centroid in self.centroids)
+                distances.append(min_distance)
+
+            total = sum(distances)
+            if total == 0:
+                self.centroids.append(random.choice(data)[:])
+                continue
+
+            threshold = random.uniform(0, total)
+            cumulative = 0.0
+            for point, distance in zip(data, distances):
+                cumulative += distance
+                if cumulative >= threshold:
+                    self.centroids.append(point[:])
+                    break
+
+    def _assign_points(self, data: List[List[float]]) -> List[int]:
+        labels: List[int] = []
         for point in data:
             distances = [euclidean_distance(point, centroid) for centroid in self.centroids]
-            closest_centroid = distances.index(min(distances))
-            labels.append(closest_centroid)
-        
+            labels.append(int(distances.index(min(distances))))
         return labels
     
-    def _update_centroids(self, data):
-        """更新聚类中心为该簇所有点的平均值"""
+    def _update_centroids(self, data: List[List[float]]) -> None:
         dimensions = len(data[0])
-        
-        for k in range(self.k):
-            # 找到属于第k个簇的所有点
-            cluster_points = [data[i] for i in range(len(data)) if self.labels[i] == k]
-            
-            if cluster_points:  # 如果该簇不为空
-                # 计算平均值作为新的中心点
-                new_centroid = []
-                for d in range(dimensions):
-                    avg = sum(point[d] for point in cluster_points) / len(cluster_points)
-                    new_centroid.append(avg)
-                self.centroids[k] = new_centroid
+
+        for cluster_index in range(self.k):
+            cluster_points = [data[i] for i in range(len(data)) if self.labels[i] == cluster_index]
+
+            if not cluster_points:
+                self.centroids[cluster_index] = random.choice(data)[:]
+                continue
+
+            new_centroid = [0.0] * dimensions
+            for d in range(dimensions):
+                new_centroid[d] = sum(point[d] for point in cluster_points) / len(cluster_points)
+            self.centroids[cluster_index] = new_centroid
     
-    def _has_converged(self, old_centroids):
-        """检查是否收敛"""
+    def _has_converged(self, old_centroids: List[List[float]]) -> bool:
         if not old_centroids:
             return False
-            
+
         for old_centroid, new_centroid in zip(old_centroids, self.centroids):
-            distance = euclidean_distance(old_centroid, new_centroid)
-            if distance > self.tolerance:
+            if euclidean_distance(old_centroid, new_centroid) > self.tolerance:
                 return False
         return True
     
-    def _print_iteration_info(self, iteration):
+    def _print_iteration_info(self, iteration: int) -> None:
         """打印迭代信息"""
         print(f"聚类中心:")
         for i, centroid in enumerate(self.centroids):
@@ -171,38 +211,51 @@ class SimpleKMeans:
         
         print(f"各簇点数: {cluster_counts}")
     
-    def predict(self, data):
-        """预测新数据点的簇标签"""
-        if isinstance(data[0], (int, float)):  # 单个点
-            distances = [euclidean_distance(data, centroid) for centroid in self.centroids]
-            return distances.index(min(distances))
-        else:  # 多个点
-            return [self.predict(point) for point in data]
+    def predict(self, data: Union[Sequence[float], Sequence[Sequence[float]]]):
+        """预测新数据点的簇标签。"""
+        if not self.centroids:
+            raise ValueError("模型尚未训练，请先调用 fit() 方法")
+
+        dimensions = len(self.centroids[0])
+
+        if isinstance(data, Sequence) and data and isinstance(data[0], (int, float)):
+            point = _ensure_point(data, dimensions)  # type: ignore[arg-type]
+            distances = [euclidean_distance(point, centroid) for centroid in self.centroids]
+            return int(distances.index(min(distances)))
+
+        predictions = []
+        for point in data:  # type: ignore[assignment]
+            processed_point = _ensure_point(point, dimensions)
+            distances = [euclidean_distance(processed_point, centroid) for centroid in self.centroids]
+            predictions.append(int(distances.index(min(distances))))
+        return predictions
     
-    def get_cluster_info(self, data):
-        """获取聚类信息"""
-        info = {}
-        
-        for k in range(self.k):
-            cluster_points = [data[i] for i in range(len(data)) if self.labels[i] == k]
-            
-            if cluster_points:
-                # 计算簇内平均距离
-                total_distance = 0
-                count = 0
-                for i, point1 in enumerate(cluster_points):
-                    for j, point2 in enumerate(cluster_points[i+1:], i+1):
-                        total_distance += euclidean_distance(point1, point2)
-                        count += 1
-                
-                avg_distance = total_distance / count if count > 0 else 0
-                
-                info[k] = {
-                    "center": self.centroids[k],
-                    "size": len(cluster_points),
-                    "avg_distance": avg_distance
-                }
-        
+    def get_cluster_info(self, data: Sequence[Sequence[float]]):
+        """获取聚类信息。"""
+        processed_data = _ensure_data(data)
+        info: dict[int, dict[str, Union[List[float], int, float]]] = {}
+
+        for cluster_index in range(self.k):
+            cluster_points = [processed_data[i] for i in range(len(processed_data)) if self.labels and self.labels[i] == cluster_index]
+
+            if not cluster_points:
+                continue
+
+            total_distance = 0.0
+            count = 0
+            for i, point1 in enumerate(cluster_points):
+                for point2 in cluster_points[i + 1:]:
+                    total_distance += euclidean_distance(point1, point2)
+                    count += 1
+
+            avg_distance = total_distance / count if count else 0.0
+
+            info[cluster_index] = {
+                "center": self.centroids[cluster_index],
+                "size": len(cluster_points),
+                "avg_distance": avg_distance,
+            }
+
         return info
 
 def distance_demo():
