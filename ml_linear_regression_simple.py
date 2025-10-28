@@ -22,9 +22,19 @@ def _check_lengths(X: Sequence[Number], y: Sequence[Number]) -> None:
 
 
 def mean_squared_error(y_true: Sequence[Number], y_pred: Sequence[Number]) -> float:
+    """计算均方误差（MSE）。"""
     _check_lengths(y_true, y_pred)
     errors = [(pred - actual) for pred, actual in zip(y_pred, y_true)]
     return sum(error * error for error in errors) / len(errors)
+
+
+def r2_score(y_true: Sequence[Number], y_pred: Sequence[Number]) -> float:
+    """计算R²分数（决定系数）。"""
+    _check_lengths(y_true, y_pred)
+    y_mean = sum(y_true) / len(y_true)
+    ss_total = sum((y - y_mean) ** 2 for y in y_true)
+    ss_residual = sum((y_t - y_p) ** 2 for y_t, y_p in zip(y_true, y_pred))
+    return 1 - (ss_residual / ss_total) if ss_total != 0 else 0.0
 
 def linear_regression_theory():
     """
@@ -162,10 +172,12 @@ def practical_example():
     train_predictions = model.predict(X_train)
     mse = mean_squared_error(y_train, train_predictions)
     rmse = math.sqrt(mse)
-    
+    r2 = r2_score(y_train, train_predictions)
+
     print(f"\n模型性能评估：")
     print(f"均方误差(MSE): {mse:.2f}")
     print(f"均方根误差(RMSE): {rmse:.2f} 万元")
+    print(f"R2分数: {r2:.4f} (越接近1越好)")
     
     # 显示损失下降过程
     print(f"\n损失函数变化（前10次迭代）：")
