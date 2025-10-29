@@ -1,9 +1,64 @@
 # 机器学习算法教程 - 逻辑回归
 # Logistic Regression: 代码实现 + 原理解释
 
+import math
+from typing import List, Sequence, Tuple, Union
+
 import numpy as np
 import matplotlib.pyplot as plt
-import math
+
+ArrayLike = Union[Sequence[float], np.ndarray]
+
+
+def _to_numpy(data: ArrayLike, *, name: str) -> np.ndarray:
+    array = np.asarray(data, dtype=float)
+    if array.ndim != 1:
+        raise ValueError(f"{name}必须是一维序列，但得到的是形状 {array.shape}")
+    if array.size == 0:
+        raise ValueError(f"{name}不能为空")
+    return array
+
+
+def _validate_binary_labels(y: np.ndarray) -> None:
+    unique = np.unique(y)
+    if not np.all(np.isin(unique, (0, 1))):
+        raise ValueError("标签必须只包含0或1")
+
+
+def log_loss(y_true: np.ndarray, y_prob: np.ndarray, eps: float = 1e-15) -> float:
+    y_prob = np.clip(y_prob, eps, 1 - eps)
+    return float(-np.mean(y_true * np.log(y_prob) + (1 - y_true) * np.log(1 - y_prob)))
+
+
+def classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[float, float, float, float]:
+    """计算分类指标：准确率、精确率、召回率、F1分数。"""
+    if y_true.shape != y_pred.shape:
+        raise ValueError("真实标签和预测标签的形状必须一致")
+
+    tp = float(np.sum((y_pred == 1) & (y_true == 1)))
+    tn = float(np.sum((y_pred == 0) & (y_true == 0)))
+    fp = float(np.sum((y_pred == 1) & (y_true == 0)))
+    fn = float(np.sum((y_pred == 0) & (y_true == 1)))
+
+    accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) else 0.0
+    precision = tp / (tp + fp) if (tp + fp) else 0.0
+    recall = tp / (tp + fn) if (tp + fn) else 0.0
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) else 0.0
+
+    return accuracy, precision, recall, f1
+
+
+def confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[int, int, int, int]:
+    """计算混淆矩阵：返回(TP, TN, FP, FN)。"""
+    if y_true.shape != y_pred.shape:
+        raise ValueError("真实标签和预测标签的形状必须一致")
+
+    tp = int(np.sum((y_pred == 1) & (y_true == 1)))
+    tn = int(np.sum((y_pred == 0) & (y_true == 0)))
+    fp = int(np.sum((y_pred == 1) & (y_true == 0)))
+    fn = int(np.sum((y_pred == 0) & (y_true == 1)))
+
+    return tp, tn, fp, fn
 
 def logistic_regression_theory():
     """
@@ -35,102 +90,84 @@ def logistic_regression_theory():
     print()
 
 class LogisticRegression:
-    """
-    逻辑回归算法实现
-    使用梯度下降法优化参数
-    """
-    
-    def __init__(self, learning_rate=0.01, max_iterations=1000, tolerance=1e-6):
-        """
-        初始化参数
-        """
-        self.learning_rate = learning_rate
-        self.max_iterations = max_iterations
-        self.tolerance = tolerance
-        self.weight = 0
-        self.bias = 0
-        self.cost_history = []
-        
-    def sigmoid(self, z):
-        """
-        Sigmoid激活函数
-        σ(z) = 1 / (1 + e^(-z))
-        
-        为了避免数值溢出，对z进行裁剪
-        """
-        z = np.clip(z, -500, 500)  # 防止exp溢出
-        return 1 / (1 + np.exp(-z))
-    
-    def fit(self, X, y):
-        """
-        训练模型
-        X: 输入特征
-        y: 标签 (0或1)
-        """
-        n_samples = len(X)
-        
+    """逻辑回归算法实现，使用梯度下降优化参数。"""
+
+    def __init__(self, learning_rate: float = 0.01, max_iterations: int = 1000, tolerance: float = 1e-6):
+        if learning_rate <= 0:
+            raise ValueError("学习率必须为正数")
+        if max_iterations <= 0:
+            raise ValueError("最大迭代次数必须为正整数")
+        if tolerance < 0:
+            raise ValueError("容差不能为负数")
+
+        self.learning_rate = float(learning_rate)
+        self.max_iterations = int(max_iterations)
+        self.tolerance = float(tolerance)
+
+        self.weight: float = 0.0
+        self.bias: float = 0.0
+        self.cost_history: List[float] = []
+
+    @staticmethod
+    def sigmoid(z: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        """Sigmoid 激活函数，带有数值稳定处理。"""
+        z = np.clip(z, -500, 500)
+        return 1.0 / (1.0 + np.exp(-z))
+
+    def fit(self, X: ArrayLike, y: ArrayLike) -> None:
+        X_arr = _to_numpy(X, name="特征")
+        y_arr = _to_numpy(y, name="标签")
+        _validate_binary_labels(y_arr)
+
+        if X_arr.shape != y_arr.shape:
+            raise ValueError("特征和标签必须长度一致")
+
+        n_samples = X_arr.size
         print(f"开始训练逻辑回归：{n_samples}个样本")
-        print(f"正样本数：{np.sum(y)}, 负样本数：{n_samples - np.sum(y)}")
-        
-        # 初始化参数
+        print(f"正样本数：{int(np.sum(y_arr))}, 负样本数：{n_samples - int(np.sum(y_arr))}")
+
         self.weight = 0.0
         self.bias = 0.0
-        
-        for i in range(self.max_iterations):
-            # 前向传播
-            z = self.weight * X + self.bias
-            y_pred = self.sigmoid(z)
-            
-            # 计算对数似然损失
-            # 添加小常数避免log(0)
-            epsilon = 1e-15
-            y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
-            
-            cost = -np.mean(y * np.log(y_pred) + (1 - y) * np.log(1 - y_pred))
+        self.cost_history.clear()
+
+        previous_cost = math.inf
+
+        for iteration in range(self.max_iterations):
+            z = self.weight * X_arr + self.bias
+            y_prob = self.sigmoid(z)
+
+            cost = log_loss(y_arr, y_prob)
             self.cost_history.append(cost)
-            
-            # 计算梯度
-            dw = np.mean((y_pred - y) * X)
-            db = np.mean(y_pred - y)
-            
-            # 更新参数
+
+            dw = float(np.mean((y_prob - y_arr) * X_arr))
+            db = float(np.mean(y_prob - y_arr))
+
             self.weight -= self.learning_rate * dw
             self.bias -= self.learning_rate * db
-            
-            # 打印训练进度
-            if i % 100 == 0:
-                print(f"迭代 {i}: 损失={cost:.4f}, w={self.weight:.4f}, b={self.bias:.4f}")
-            
-            # 检查收敛
-            if i > 0 and abs(self.cost_history[-2] - cost) < self.tolerance:
-                print(f"在第 {i} 次迭代时收敛")
+
+            if iteration % 100 == 0:
+                print(f"迭代 {iteration}: 损失={cost:.4f}, w={self.weight:.4f}, b={self.bias:.4f}")
+
+            if self.tolerance > 0 and abs(previous_cost - cost) < self.tolerance:
+                print(f"在第 {iteration} 次迭代时收敛，损失变化 {abs(previous_cost - cost):.6f}")
                 break
-        
+            previous_cost = cost
+
         print(f"训练完成！最终参数: w={self.weight:.4f}, b={self.bias:.4f}")
-    
-    def predict_proba(self, X):
-        """
-        预测概率
-        """
-        z = self.weight * X + self.bias
-        return self.sigmoid(z)
-    
-    def predict(self, X, threshold=0.5):
-        """
-        预测类别 (0或1)
-        """
+
+    def predict_proba(self, X: ArrayLike) -> np.ndarray:
+        X_arr = _to_numpy(X, name="特征")
+        return self.sigmoid(self.weight * X_arr + self.bias)
+
+    def predict(self, X: ArrayLike, threshold: float = 0.5) -> np.ndarray:
+        if not 0 < threshold < 1:
+            raise ValueError("阈值必须在(0, 1)之间")
+
         probabilities = self.predict_proba(X)
         return (probabilities >= threshold).astype(int)
-    
-    def decision_boundary_value(self):
-        """
-        计算决策边界
-        当 σ(w*x + b) = 0.5 时，w*x + b = 0
-        所以决策边界为 x = -b/w
-        """
-        if self.weight != 0:
-            return -self.bias / self.weight
-        return None
+
+    def decision_boundary_value(self) -> Union[float, None]:
+        return -self.bias / self.weight if self.weight != 0 else None
 
 def sigmoid_function_demo():
     """
@@ -142,48 +179,44 @@ def sigmoid_function_demo():
     z_values = np.linspace(-10, 10, 100)
     sigmoid_values = 1 / (1 + np.exp(-z_values))
     
-    print("Sigmoid函数 σ(z) = 1 / (1 + e^(-z)) 的特点：")
-    print("• 输出范围：(0, 1)")
-    print("• 在z=0时，σ(0) = 0.5")
-    print("• 单调递增")
-    print("• S型曲线")
+    print("Sigmoid函数 sigma(z) = 1 / (1 + e^(-z)) 的特点：")
+    print("- 输出范围：(0, 1)")
+    print("- 在z=0时，sigma(0) = 0.5")
+    print("- 单调递增")
+    print("- S型曲线")
     
     # 关键点值
     key_points = [-2, -1, 0, 1, 2]
     print(f"\n关键点的Sigmoid值：")
     for z in key_points:
         sigmoid_val = 1 / (1 + math.exp(-z))
-        print(f"σ({z:2d}) = {sigmoid_val:.4f}")
+        print(f"sigma({z:2d}) = {sigmoid_val:.4f}")
     
-    try:
-        plt.figure(figsize=(10, 4))
-        
-        # 子图1: Sigmoid函数
-        plt.subplot(1, 2, 1)
-        plt.plot(z_values, sigmoid_values, 'b-', linewidth=2, label='Sigmoid函数')
-        plt.axhline(y=0.5, color='r', linestyle='--', alpha=0.7, label='决策阈值=0.5')
-        plt.axvline(x=0, color='r', linestyle='--', alpha=0.7)
-        plt.xlabel('z = wx + b')
-        plt.ylabel('σ(z)')
-        plt.title('Sigmoid激活函数')
-        plt.grid(True, alpha=0.3)
-        plt.legend()
-        
-        # 子图2: 导数
-        sigmoid_derivative = sigmoid_values * (1 - sigmoid_values)
-        plt.subplot(1, 2, 2)
-        plt.plot(z_values, sigmoid_derivative, 'g-', linewidth=2, label="σ'(z) = σ(z)(1-σ(z))")
-        plt.xlabel('z')
-        plt.ylabel("σ'(z)")
-        plt.title('Sigmoid函数的导数')
-        plt.grid(True, alpha=0.3)
-        plt.legend()
-        
-        plt.tight_layout()
-        plt.show()
-        
-    except ImportError:
-        print("matplotlib未安装，无法显示图表")
+    plt.figure(figsize=(10, 4))
+
+    # 子图1: Sigmoid函数
+    plt.subplot(1, 2, 1)
+    plt.plot(z_values, sigmoid_values, 'b-', linewidth=2, label='Sigmoid函数')
+    plt.axhline(y=0.5, color='r', linestyle='--', alpha=0.7, label='决策阈值=0.5')
+    plt.axvline(x=0, color='r', linestyle='--', alpha=0.7)
+    plt.xlabel('z = wx + b')
+    plt.ylabel('σ(z)')
+    plt.title('Sigmoid激活函数')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+
+    # 子图2: 导数
+    sigmoid_derivative = sigmoid_values * (1 - sigmoid_values)
+    plt.subplot(1, 2, 2)
+    plt.plot(z_values, sigmoid_derivative, 'g-', linewidth=2, label="σ'(z) = σ(z)(1-σ(z))")
+    plt.xlabel('z')
+    plt.ylabel("σ'(z)")
+    plt.title('Sigmoid函数的导数')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
 
 def generate_classification_data():
     """
@@ -222,7 +255,7 @@ def practical_example():
     X_train, y_train = generate_classification_data()
     
     # 训练模型
-    model = LogisticRegression(learning_rate=0.1, max_iterations=1000)
+    model = LogisticRegression(learning_rate=0.1, max_iterations=2000, tolerance=1e-6)
     model.fit(X_train, y_train)
     
     # 预测新学生
@@ -239,22 +272,19 @@ def practical_example():
     
     # 模型评估
     train_predictions = model.predict(X_train)
-    accuracy = np.mean(train_predictions == y_train)
-    
+    accuracy, precision, recall, f1 = classification_metrics(y_train, train_predictions)
+    tp, tn, fp, fn = confusion_matrix(y_train, train_predictions)
+
     print(f"\n模型性能：")
     print(f"训练集准确率: {accuracy:.3f}")
-    
-    # 混淆矩阵
-    tp = np.sum((train_predictions == 1) & (y_train == 1))
-    tn = np.sum((train_predictions == 0) & (y_train == 0))
-    fp = np.sum((train_predictions == 1) & (y_train == 0))
-    fn = np.sum((train_predictions == 0) & (y_train == 1))
-    
-    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-    
     print(f"精确率(Precision): {precision:.3f}")
     print(f"召回率(Recall): {recall:.3f}")
+    print(f"F1分数: {f1:.3f}")
+
+    print(f"\n混淆矩阵：")
+    print(f"              预测: 不通过  预测: 通过")
+    print(f"实际: 不通过      {tn:4d}       {fp:4d}")
+    print(f"实际: 通过        {fn:4d}       {tp:4d}")
     
     # 可视化
     visualize_logistic_regression(X_train, y_train, model)
@@ -263,65 +293,58 @@ def visualize_logistic_regression(X, y, model):
     """
     可视化逻辑回归结果
     """
-    try:
-        plt.figure(figsize=(15, 5))
-        
-        # 子图1: 数据点和决策边界
-        plt.subplot(1, 3, 1)
-        
-        # 绘制数据点
-        passed_idx = y == 1
-        failed_idx = y == 0
-        
-        plt.scatter(X[passed_idx], y[passed_idx], color='green', alpha=0.6, 
-                   label='通过考试', s=30)
-        plt.scatter(X[failed_idx], y[failed_idx], color='red', alpha=0.6, 
-                   label='未通过考试', s=30)
-        
-        # 决策边界
-        boundary = model.decision_boundary_value()
-        if boundary:
-            plt.axvline(x=boundary, color='blue', linestyle='--', linewidth=2, 
-                       label=f'决策边界: {boundary:.1f}小时')
-        
-        plt.xlabel('学习时间(小时)')
-        plt.ylabel('考试结果')
-        plt.title('逻辑回归分类结果')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        
-        # 子图2: 概率曲线
-        plt.subplot(1, 3, 2)
-        x_line = np.linspace(0, 20, 100)
-        prob_line = model.predict_proba(x_line)
-        
-        plt.plot(x_line, prob_line, 'b-', linewidth=2, label='通过概率')
-        plt.axhline(y=0.5, color='r', linestyle='--', alpha=0.7, label='决策阈值=0.5')
-        if boundary:
-            plt.axvline(x=boundary, color='b', linestyle='--', alpha=0.7)
-        
-        plt.scatter(X[passed_idx], np.ones(np.sum(passed_idx)), color='green', alpha=0.3, s=20)
-        plt.scatter(X[failed_idx], np.zeros(np.sum(failed_idx)), color='red', alpha=0.3, s=20)
-        
-        plt.xlabel('学习时间(小时)')
-        plt.ylabel('通过概率')
-        plt.title('Sigmoid概率函数')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        
-        # 子图3: 损失函数收敛
-        plt.subplot(1, 3, 3)
-        plt.plot(model.cost_history, 'g-', linewidth=2)
-        plt.xlabel('迭代次数')
-        plt.ylabel('对数似然损失')
-        plt.title('训练过程中的损失下降')
-        plt.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        plt.show()
-        
-    except ImportError:
-        print("matplotlib未安装，无法显示图表")
+    plt.figure(figsize=(15, 5))
+
+    # 子图1: 数据点和决策边界
+    plt.subplot(1, 3, 1)
+
+    # 绘制数据点
+    passed_idx = y == 1
+    failed_idx = y == 0
+
+    plt.scatter(X[passed_idx], y[passed_idx], color='green', alpha=0.6, label='通过考试', s=30)
+    plt.scatter(X[failed_idx], y[failed_idx], color='red', alpha=0.6, label='未通过考试', s=30)
+
+    # 决策边界
+    boundary = model.decision_boundary_value()
+    if boundary is not None:
+        plt.axvline(x=boundary, color='blue', linestyle='--', linewidth=2, label=f'决策边界: {boundary:.1f}小时')
+
+    plt.xlabel('学习时间(小时)')
+    plt.ylabel('考试结果')
+    plt.title('逻辑回归分类结果')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+
+    # 子图2: 概率曲线
+    plt.subplot(1, 3, 2)
+    x_line = np.linspace(0, 20, 200)
+    prob_line = model.predict_proba(x_line)
+
+    plt.plot(x_line, prob_line, 'b-', linewidth=2, label='通过概率')
+    plt.axhline(y=0.5, color='r', linestyle='--', alpha=0.7, label='决策阈值=0.5')
+    if boundary is not None:
+        plt.axvline(x=boundary, color='b', linestyle='--', alpha=0.7)
+
+    plt.scatter(X[passed_idx], np.ones(np.sum(passed_idx)), color='green', alpha=0.3, s=20)
+    plt.scatter(X[failed_idx], np.zeros(np.sum(failed_idx)), color='red', alpha=0.3, s=20)
+
+    plt.xlabel('学习时间(小时)')
+    plt.ylabel('通过概率')
+    plt.title('Sigmoid概率函数')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+
+    # 子图3: 损失函数收敛
+    plt.subplot(1, 3, 3)
+    plt.plot(model.cost_history, 'g-', linewidth=2)
+    plt.xlabel('迭代次数')
+    plt.ylabel('对数似然损失')
+    plt.title('训练过程中的损失下降')
+    plt.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
 
 def compare_with_linear_regression():
     """
@@ -351,20 +374,20 @@ def mathematical_insights():
     
     
     print("1. 为什么使用Sigmoid函数？")
-    print("   • 将任意实数映射到(0,1)区间，可解释为概率")
-    print("   • 可微分，便于梯度计算")
-    print("   • 在两端饱和，中间敏感的特性符合分类需求")
-    
+    print("   - 将任意实数映射到(0,1)区间，可解释为概率")
+    print("   - 可微分，便于梯度计算")
+    print("   - 在两端饱和，中间敏感的特性符合分类需求")
+
     print("\n2. 对数似然损失函数推导：")
-    print("   • 假设：P(y=1|x) = σ(wx+b), P(y=0|x) = 1-σ(wx+b)")
-    print("   • 似然函数：L = ∏P(yi|xi)")
-    print("   • 对数似然：log L = Σ[yi*log(pi) + (1-yi)*log(1-pi)]")
-    print("   • 损失函数：J = -log L (最小化负对数似然)")
-    
+    print("   - 假设：P(y=1|x) = sigma(wx+b), P(y=0|x) = 1-sigma(wx+b)")
+    print("   - 似然函数：L = Product(P(yi|xi))")
+    print("   - 对数似然：log L = Sigma[yi*log(pi) + (1-yi)*log(1-pi)]")
+    print("   - 损失函数：J = -log L (最小化负对数似然)")
+
     print("\n3. 梯度计算：")
-    print("   • ∂J/∂w = (1/m)Σ(σ(wx+b) - y)x")
-    print("   • ∂J/∂b = (1/m)Σ(σ(wx+b) - y)")
-    print("   • 形式与线性回归类似，但σ(wx+b)替代了wx+b")
+    print("   - d_J/d_w = (1/m)Sigma(sigma(wx+b) - y)x")
+    print("   - d_J/d_b = (1/m)Sigma(sigma(wx+b) - y)")
+    print("   - 形式与线性回归类似，但sigma(wx+b)替代了wx+b")
 
 if __name__ == "__main__":
     # 运行完整的逻辑回归教程
@@ -376,8 +399,8 @@ if __name__ == "__main__":
     
     print("\n=== 总结 ===")
     print("逻辑回归扩展了线性模型到分类问题，核心概念包括：")
-    print("• Sigmoid函数：将线性输出转换为概率")
-    print("• 对数似然损失：适合概率预测的损失函数")
-    print("• 决策边界：分离不同类别的界限")
-    print("• 概率解释：输出可以理解为置信度")
+    print("- Sigmoid函数：将线性输出转换为概率")
+    print("- 对数似然损失：适合概率预测的损失函数")
+    print("- 决策边界：分离不同类别的界限")
+    print("- 概率解释：输出可以理解为置信度")
     print("\n下一步：学习决策树，了解非线性分类方法！")
