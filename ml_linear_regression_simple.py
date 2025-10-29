@@ -122,6 +122,8 @@ class SimpleLinearRegression:
 
         self.cost_history.clear()
         previous_cost = math.inf
+        best_cost = math.inf
+        wait = 0
 
         for iteration in range(self.max_iterations):
             # 向量化计算预测值和误差
@@ -141,10 +143,26 @@ class SimpleLinearRegression:
             if self.verbose >= 2 and iteration % 100 == 0:
                 print(f"迭代 {iteration}: 损失={cost:.4f}, w={self.weight:.4f}, b={self.bias:.4f}")
 
-            if self.tolerance > 0 and abs(previous_cost - cost) < self.tolerance:
-                if self.verbose >= 1:
-                    print(f"满足提前停止条件（迭代 {iteration}），损失变化 {abs(previous_cost - cost):.6f}")
-                break
+            # 稳健早停：结合绝对变化和相对改进+patience
+            if self.tolerance > 0:
+                # 检查绝对变化
+                if abs(previous_cost - cost) < self.tolerance:
+                    if self.verbose >= 1:
+                        print(f"满足提前停止条件（迭代 {iteration}），损失变化 {abs(previous_cost - cost):.6f}")
+                    break
+                
+                # 检查相对改进（带patience）
+                if cost < best_cost * (1 - self.tolerance):
+                    best_cost = cost
+                    wait = 0
+                else:
+                    wait += 1
+                
+                if wait >= self.patience:
+                    if self.verbose >= 1:
+                        print(f"早停触发（迭代 {iteration}），{self.patience}轮内无显著改进")
+                    break
+            
             previous_cost = cost
 
         if self.verbose >= 1:
