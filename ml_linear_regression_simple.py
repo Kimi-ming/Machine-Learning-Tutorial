@@ -163,6 +163,32 @@ class SimpleLinearRegression:
 
         values = _ensure_sequence(X, allow_empty=True)
         return [self.weight * x + self.bias for x in values]
+    
+    def score(self, X: Sequence[Number], y: Sequence[Number]) -> float:
+        """计算模型的R²分数（sklearn兼容API）"""
+        predictions = self.predict(X)
+        return r2_score(y, predictions)
+    
+    def summary(self) -> None:
+        """打印模型摘要信息"""
+        if not self._is_fitted:
+            print("模型状态: 未训练")
+            return
+        
+        print("=" * 50)
+        print("模型摘要")
+        print("=" * 50)
+        print(f"模型类型: 简单线性回归")
+        print(f"训练状态: 已训练")
+        print(f"模型公式: y = {self.weight:.6f} * x + {self.bias:.6f}")
+        print(f"参数:")
+        print(f"  - 权重(w): {self.weight:.6f}")
+        print(f"  - 偏置(b): {self.bias:.6f}")
+        print(f"训练信息:")
+        print(f"  - 学习率: {self.learning_rate}")
+        print(f"  - 迭代次数: {len(self.cost_history)}")
+        print(f"  - 最终损失: {self.cost_history[-1]:.6f}")
+        print("=" * 50)
 
 def generate_sample_data():
     """
