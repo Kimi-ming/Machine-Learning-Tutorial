@@ -17,24 +17,46 @@
 ### 运行方式
 
 ```bash
-# 交互式菜单模式（推荐）
-python main.py
-
-# 经典演示模式
-python main.py --classic
-
-# 查看帮助
-python main.py --help
-```
-
-### 单独运行算法
-
-```bash
-# 运行特定算法
+# 单独运行算法模块
 python ml_linear_regression.py
 python ml_neural_network.py
 python ml_random_forest.py
+
+# 运行实战项目（推荐）
+python project_linear_regression_house_price.py
+python project_logistic_regression_fraud_detection.py
+python project_kmeans_customer_segmentation.py
 ```
+
+## 🎯 实战项目（NEW！）
+
+本项目新增了完整的真实场景项目案例，每个项目都包含：
+- ✅ 完整的业务场景和数据
+- ✅ 详细的代码注释和说明
+- ✅ 交互式演示和预测功能
+- ✅ 模型评估和优化建议
+
+**查看项目列表**: [PROJECTS_README.md](PROJECTS_README.md)
+
+### 项目1: 房价预测系统 (线性回归)
+```bash
+python project_linear_regression_house_price.py
+```
+基于房屋面积、房龄、楼层等特征预测房价，学习多元线性回归的实际应用。
+
+### 项目2: 信用卡欺诈检测 (逻辑回归)
+```bash
+python project_logistic_regression_fraud_detection.py
+```
+实时检测可疑信用卡交易，理解二分类和风险评估。
+
+### 项目3: 客户分群系统 (K-Means)
+```bash
+python project_kmeans_customer_segmentation.py
+```
+对电商客户进行智能分群，实现精准营销策略。
+
+更多项目持续更新中...
 
 ## 📋 算法列表
 
