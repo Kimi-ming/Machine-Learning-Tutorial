@@ -270,14 +270,14 @@ def practical_example():
 
 def demonstrate_different_learning_rates():
     """
-    演示不同学习率的效果
+    演示不同学习率的效果（包括自动估计）
     """
     print("\n=== 不同学习率效果演示 ===")
     
     # 生成相同的训练数据
     X_train, y_train = generate_sample_data()
     
-    learning_rates = [0.00005, 0.00001, 0.000001]
+    learning_rates = ["auto", 0.00005, 0.00001, 0.000001]
     
     for lr in learning_rates:
         print(f"\n--- 学习率 = {lr} ---")
