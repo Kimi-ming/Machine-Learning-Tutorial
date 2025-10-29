@@ -207,6 +207,34 @@ class SimpleLinearRegression:
         print(f"  - 迭代次数: {len(self.cost_history)}")
         print(f"  - 最终损失: {self.cost_history[-1]:.6f}")
         print("=" * 50)
+    
+    def plot_loss_curve_text(self, max_points: int = 20) -> None:
+        """用文本字符绘制损失曲线（不依赖matplotlib）"""
+        if not self._is_fitted or not self.cost_history:
+            print("无训练历史数据")
+            return
+        
+        print("\n损失曲线（文本可视化）:")
+        print("-" * 60)
+        
+        # 采样数据点
+        history = self.cost_history
+        step = max(1, len(history) // max_points)
+        sampled = [history[i] for i in range(0, len(history), step)]
+        
+        # 归一化到0-40范围用于绘图
+        min_loss = min(sampled)
+        max_loss = max(sampled)
+        range_loss = max_loss - min_loss if max_loss > min_loss else 1
+        
+        for i, loss in enumerate(sampled):
+            iter_num = i * step
+            normalized = int(((loss - min_loss) / range_loss) * 40)
+            bar = "█" * normalized
+            print(f"{iter_num:4d} | {bar} {loss:.4f}")
+        
+        print("-" * 60)
+        print(f"最终损失: {history[-1]:.6f}")
 
 def generate_sample_data():
     """
