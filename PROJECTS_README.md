@@ -56,33 +56,7 @@ python project_logistic_regression_fraud_detection.py
 
 ---
 
-### 3. 客户流失预测系统 (决策树)
-**文件**: `project_decision_tree_churn_prediction.py`
-
-**项目简介**: 预测电信客户流失风险，帮助企业制定挽留策略。
-
-**特征**:
-- 合约时长、月费、客户服务评分等
-- 决策树分类
-- 可解释性强
-- 特征重要性分析
-
-**适合人群**: 想了解可解释AI和客户关系管理的学习者
-
-**运行**:
-```bash
-python project_decision_tree_churn_prediction.py
-```
-
-**学习要点**:
-- 理解决策树的决策过程
-- 学会解释模型预测结果
-- 掌握特征重要性分析
-- 了解过拟合控制方法
-
----
-
-### 4. 客户分群系统 (K-Means聚类)
+### 3. 客户分群系统 (K-Means聚类)
 **文件**: `project_kmeans_customer_segmentation.py`
 
 **项目简介**: 对电商客户进行智能分群，实现精准营销。
@@ -108,16 +82,44 @@ python project_kmeans_customer_segmentation.py
 
 ---
 
+### 4. 客户流失预测系统 (决策树)
+**文件**: `project_decision_tree_churn_prediction.py`
+
+**项目简介**: 预测电信客户流失风险，帮助企业制定挽留策略。
+
+**特征**:
+- 合约时长、月费、客户服务评分等
+- CART决策树算法
+- 可视化决策树结构
+- 决策路径解释
+- 特征重要性分析
+
+**适合人群**: 想了解可解释AI和客户关系管理的学习者
+
+**运行**:
+```bash
+python project_decision_tree_churn_prediction.py
+```
+
+**学习要点**:
+- 理解决策树的决策过程和基尼不纯度
+- 学会解释模型预测结果（决策路径）
+- 掌握特征重要性分析
+- 了解过拟合控制方法（剪枝）
+
+---
+
 ### 5. 手写数字识别系统 (神经网络)
 **文件**: `project_neural_network_digit_recognition.py`
 
 **项目简介**: 识别手写数字，理解深度学习基础。
 
 **特征**:
-- 简化的MNIST数据集
-- 多层感知机
-- 反向传播算法
-- Softmax多分类
+- 简化的数字数据集（8x8像素）
+- 三层神经网络（输入-隐藏-输出）
+- 前向传播 + 反向传播
+- ReLU + Softmax激活函数
+- ASCII艺术可视化
 
 **适合人群**: 想入门深度学习的学习者
 
@@ -127,10 +129,10 @@ python project_neural_network_digit_recognition.py
 ```
 
 **学习要点**:
-- 理解神经网络的工作原理
-- 学习反向传播算法
-- 掌握多分类问题处理
-- 了解激活函数的作用
+- 理解神经网络的工作原理（前向和反向传播）
+- 学习梯度下降和参数更新
+- 掌握多分类问题处理（Softmax + 交叉熵）
+- 了解激活函数的作用（ReLU vs Sigmoid）
 
 ---
 

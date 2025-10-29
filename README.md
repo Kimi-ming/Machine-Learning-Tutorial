@@ -56,7 +56,19 @@ python project_kmeans_customer_segmentation.py
 ```
 对电商客户进行智能分群，实现精准营销策略。
 
-更多项目持续更新中...
+### 项目4: 客户流失预测 (决策树)
+```bash
+python project_decision_tree_churn_prediction.py
+```
+预测电信客户流失风险，可视化决策树结构，高度可解释。
+
+### 项目5: 手写数字识别 (神经网络)
+```bash
+python project_neural_network_digit_recognition.py
+```
+识别手写数字，理解神经网络的前向和反向传播。
+
+📖 **查看所有项目详情**: [PROJECTS_README.md](PROJECTS_README.md)
 
 ## 📋 算法列表
 
