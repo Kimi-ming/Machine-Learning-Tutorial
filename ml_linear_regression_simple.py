@@ -96,19 +96,28 @@ class SimpleLinearRegression:
     learning_rate: Union[float, str] = 0.01  # 支持"auto"自动估计
     max_iterations: int = 1000
     tolerance: float = 0.0
+    patience: int = 50  # 早停耐心值
     verbose: int = 0  # 添加 verbose 属性，0=静默，1=基本信息，2=详细信息
+    normalize: bool = False  # 是否对特征做标准化
     weight: float = field(default=0.0, init=False)
     bias: float = field(default=0.0, init=False)
     cost_history: List[float] = field(default_factory=list, init=False)
     _is_fitted: bool = field(default=False, init=False)
+    _x_mean: float = field(default=0.0, init=False)
+    _x_std: float = field(default=1.0, init=False)
+    _last_learning_rate: float = field(default=0.0, init=False)
 
     def __post_init__(self) -> None:
-        if self.learning_rate <= 0:
+        if isinstance(self.learning_rate, (int, float)) and self.learning_rate <= 0:
             raise ValueError("学习率必须为正数")
+        if isinstance(self.learning_rate, str) and self.learning_rate != "auto":
+            raise ValueError("学习率只支持数值或'auto'")
         if self.max_iterations <= 0:
             raise ValueError("最大迭代次数必须为正整数")
         if self.tolerance < 0:
             raise ValueError("容差不能为负数")
+        if self.patience <= 0:
+            raise ValueError("耐心值必须为正整数")
 
     def fit(self, X: Iterable[Number], y: Iterable[Number]) -> "SimpleLinearRegression":
         """训练模型，返回self支持链式调用。"""
@@ -117,31 +126,59 @@ class SimpleLinearRegression:
         _check_lengths(X_list, y_list)
 
         n_samples = len(X_list)
+
+        # 特征标准化（可选）
+        if self.normalize:
+            self._x_mean = sum(X_list) / n_samples
+            variance = sum((x - self._x_mean) ** 2 for x in X_list) / n_samples
+            self._x_std = math.sqrt(variance)
+            if self._x_std < 1e-12:
+                raise ValueError("特征标准差过小，无法进行标准化")
+            X_processed = [(x - self._x_mean) / self._x_std for x in X_list]
+        else:
+            self._x_mean = 0.0
+            self._x_std = 1.0
+            X_processed = list(X_list)
+
+        # 学习率处理
+        if self.learning_rate == "auto":
+            actual_lr = self._estimate_learning_rate(X_processed)
+            if self.verbose >= 1:
+                print(f"自动估计学习率: {actual_lr:.6f}")
+        else:
+            actual_lr = float(self.learning_rate)
+
+        self._last_learning_rate = actual_lr
+
         if self.verbose >= 1:
-            print(f"开始训练：{n_samples}个样本，学习率={self.learning_rate}")
+            print(f"开始训练：{n_samples}个样本，学习率={actual_lr}")
 
         self.cost_history.clear()
         previous_cost = math.inf
         best_cost = math.inf
         wait = 0
 
+        # 初始化参数（在可能的标准化空间中）
+        weight = 0.0
+        bias = 0.0
+
         for iteration in range(self.max_iterations):
             # 向量化计算预测值和误差
-            predictions = [self.weight * x + self.bias for x in X_list]
+            predictions = [weight * x + bias for x in X_processed]
             errors = [pred - actual for pred, actual in zip(predictions, y_list)]
 
             cost = sum(e * e for e in errors) / n_samples
             self.cost_history.append(cost)
 
             # 向量化梯度计算
-            gradient_w = (2 / n_samples) * sum(error * x for error, x in zip(errors, X_list))
+            gradient_w = (2 / n_samples) * sum(error * x for error, x in zip(errors, X_processed))
             gradient_b = (2 / n_samples) * sum(errors)
 
-            self.weight -= actual_lr * gradient_w
-            self.bias -= actual_lr * gradient_b
+            weight -= actual_lr * gradient_w
+            bias -= actual_lr * gradient_b
 
             if self.verbose >= 2 and iteration % 100 == 0:
-                print(f"迭代 {iteration}: 损失={cost:.4f}, w={self.weight:.4f}, b={self.bias:.4f}")
+                print(f"迭代 {iteration}: 损失={cost:.4f}, w={weight:.4f}, b={bias:.4f}")
 
             # 稳健早停：结合绝对变化和相对改进+patience
             if self.tolerance > 0:
@@ -150,24 +187,32 @@ class SimpleLinearRegression:
                     if self.verbose >= 1:
                         print(f"满足提前停止条件（迭代 {iteration}），损失变化 {abs(previous_cost - cost):.6f}")
                     break
-                
+
                 # 检查相对改进（带patience）
                 if cost < best_cost * (1 - self.tolerance):
                     best_cost = cost
                     wait = 0
                 else:
                     wait += 1
-                
+
                 if wait >= self.patience:
                     if self.verbose >= 1:
                         print(f"早停触发（迭代 {iteration}），{self.patience}轮内无显著改进")
                     break
-            
+
             previous_cost = cost
+
+        # 将参数转换回原始尺度
+        if self.normalize:
+            self.weight = weight / self._x_std
+            self.bias = bias - (weight * self._x_mean / self._x_std)
+        else:
+            self.weight = weight
+            self.bias = bias
 
         if self.verbose >= 1:
             print(f"训练完成！最终参数: w={self.weight:.4f}, b={self.bias:.4f}")
-        
+
         self._is_fitted = True
         return self
 
@@ -203,7 +248,8 @@ class SimpleLinearRegression:
         print(f"  - 权重(w): {self.weight:.6f}")
         print(f"  - 偏置(b): {self.bias:.6f}")
         print(f"训练信息:")
-        print(f"  - 学习率: {self.learning_rate}")
+        print(f"  - 学习率: {self._last_learning_rate:.6f} (配置: {self.learning_rate})")
+        print(f"  - 特征标准化: {'启用' if self.normalize else '未启用'}")
         print(f"  - 迭代次数: {len(self.cost_history)}")
         print(f"  - 最终损失: {self.cost_history[-1]:.6f}")
         print("=" * 50)
