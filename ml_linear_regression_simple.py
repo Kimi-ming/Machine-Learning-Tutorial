@@ -93,7 +93,7 @@ def linear_regression_theory():
 class SimpleLinearRegression:
     """线性回归算法实现（纯Python版）。"""
 
-    learning_rate: float = 0.01
+    learning_rate: Union[float, str] = 0.01  # 支持"auto"自动估计
     max_iterations: int = 1000
     tolerance: float = 0.0
     verbose: int = 0  # 添加 verbose 属性，0=静默，1=基本信息，2=详细信息
@@ -135,8 +135,8 @@ class SimpleLinearRegression:
             gradient_w = (2 / n_samples) * sum(error * x for error, x in zip(errors, X_list))
             gradient_b = (2 / n_samples) * sum(errors)
 
-            self.weight -= self.learning_rate * gradient_w
-            self.bias -= self.learning_rate * gradient_b
+            self.weight -= actual_lr * gradient_w
+            self.bias -= actual_lr * gradient_b
 
             if self.verbose >= 2 and iteration % 100 == 0:
                 print(f"迭代 {iteration}: 损失={cost:.4f}, w={self.weight:.4f}, b={self.bias:.4f}")
