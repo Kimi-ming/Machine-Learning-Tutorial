@@ -96,9 +96,11 @@ class SimpleLinearRegression:
     learning_rate: float = 0.01
     max_iterations: int = 1000
     tolerance: float = 0.0
+    verbose: int = 0  # 添加 verbose 属性，0=静默，1=基本信息，2=详细信息
     weight: float = field(default=0.0, init=False)
     bias: float = field(default=0.0, init=False)
     cost_history: List[float] = field(default_factory=list, init=False)
+    _is_fitted: bool = field(default=False, init=False)
 
     def __post_init__(self) -> None:
         if self.learning_rate <= 0:
@@ -148,10 +150,14 @@ class SimpleLinearRegression:
         if self.verbose >= 1:
             print(f"训练完成！最终参数: w={self.weight:.4f}, b={self.bias:.4f}")
         
+        self._is_fitted = True
         return self
 
     def predict(self, X: Union[Number, Sequence[Number]]) -> Union[float, List[float]]:
         """预测函数。"""
+        if not self._is_fitted:
+            raise RuntimeError("模型未训练，请先调用fit()方法")
+        
         if isinstance(X, (int, float)):
             return self.weight * float(X) + self.bias
 
@@ -265,15 +271,15 @@ def mathematical_insights():
     print("   f) 重复b-e直到收敛")
     
     print("\n2. 学习率选择原则：")
-    print("   • 太大：可能跳过最优点，损失震荡")
-    print("   • 太小：收敛缓慢，需要更多迭代")
-    print("   • 典型值：0.001 - 0.1")
+    print("   - 太大：可能跳过最优点，损失震荡")
+    print("   - 太小：收敛缓慢，需要更多迭代")
+    print("   - 典型值：0.001 - 0.1")
     
     print("\n3. 为什么使用均方误差？")
-    print("   • 可微分：便于梯度计算")
-    print("   • 凸函数：保证全局最优解")
-    print("   • 对大误差惩罚更重")
-    print("   • 数学性质良好")
+    print("   - 可微分：便于梯度计算")
+    print("   - 凸函数：保证全局最优解")
+    print("   - 对大误差惩罚更重")
+    print("   - 数学性质良好")
 
 def toy_example():
     """玩具示例：5个点的线性回归，手算验证"""
@@ -339,11 +345,11 @@ if __name__ == "__main__":
     
     print("\n=== 总结 ===")
     print("线性回归是机器学习的基础，通过本教程你学会了：")
-    print("• 线性回归的数学原理和几何意义")
-    print("• 梯度下降算法的具体实现")
-    print("• 损失函数的作用和计算方法")
-    print("• 学习率对训练过程的影响")
-    print("• 如何评估模型性能")
+    print("- 线性回归的数学原理和几何意义")
+    print("- 梯度下降算法的具体实现")
+    print("- 损失函数的作用和计算方法")
+    print("- 学习率对训练过程的影响")
+    print("- 如何评估模型性能")
     print("\n建议安装numpy和matplotlib以获得更好的学习体验：")
     print("pip install numpy matplotlib")
     print("\n下一步：学习逻辑回归，了解分类问题的解决方法！")
